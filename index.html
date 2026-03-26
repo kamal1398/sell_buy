@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d7b81" />
+    <title>البيانات</title>
+    <style>
+      :root {
+        --bg: #f3f5f4;
+        --panel: rgba(255, 255, 255, 0.84);
+        --chip: #cae8ea;
+        --primary: #0d7b81;
+        --text: #1f3032;
+        --muted: #6a7d80;
+        --shadow: 0 18px 42px rgba(9, 59, 63, 0.08);
+        --radius: 24px;
+        --font: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font);
+        background:
+          radial-gradient(circle at top left, rgba(13, 123, 129, 0.08), transparent 32%),
+          linear-gradient(180deg, #fafcfb 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      .page-shell {
+        max-width: 480px;
+        margin: 0 auto;
+        min-height: 100vh;
+      }
+
+      .topbar {
+        padding: 22px 18px 12px;
+      }
+
+      .brand {
+        margin: 0 0 4px;
+        color: var(--primary);
+        font-weight: 800;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+      }
+
+      .topbar h1 {
+        margin: 0;
+        color: var(--primary);
+        font-size: 1.4rem;
+        font-weight: 700;
+      }
+
+      .content {
+        padding: 8px 18px 32px;
+      }
+
+      .status {
+        min-height: 1.5em;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .data-grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .field-card {
+        display: grid;
+        gap: 10px;
+        padding: 16px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius);
+      }
+
+      .field-title {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 2.2fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .field-chip {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        background: var(--chip);
+        border-radius: 16px;
+        color: #315052;
+        font-weight: 700;
+      }
+
+      .field-value {
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border-radius: 16px;
+        padding: 0 16px;
+        box-shadow: inset 0 0 0 1px rgba(31, 48, 50, 0.05);
+        direction: ltr;
+        text-align: left;
+      }
+
+      @media (max-width: 420px) {
+        .field-row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <p class="brand">Brand</p>
+          <h1>البيانات</h1>
+        </div>
+      </header>
+
+      <main class="content">
+        <p class="status" id="statusMessage">جارٍ تحميل البيانات...</p>
+
+        <section class="data-grid" aria-label="عرض البيانات">
+          <article class="field-card">
+            <span class="field-title">السعر</span>
+            <div class="field-row">
+              <span class="field-chip">سعر الشراء</span>
+              <div class="field-value" id="buyPrice"></div>
+            </div>
+          </article>
+
+          <article class="field-card">
+            <span class="field-title">السعر</span>
+            <div class="field-row">
+              <span class="field-chip">سعر البيع</span>
+              <div class="field-value" id="sellPrice"></div>
+            </div>
+          </article>
+
+          <article class="field-card">
+            <span class="field-title">القيمة</span>
+            <div class="field-row">
+              <span class="field-chip">الكمية</span>
+              <div class="field-value" id="quantity"></div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const statusMessage = document.getElementById("statusMessage");
+      const buyPrice = document.getElementById("buyPrice");
+      const sellPrice = document.getElementById("sellPrice");
+      const quantity = document.getElementById("quantity");
+
+      function setStatus(message, isError = false) {
+        statusMessage.textContent = message;
+        statusMessage.style.color = isError ? "#b42318" : "";
+      }
+
+      function parseData(text) {
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        const getValueAfterLabel = (label) => {
+          const index = lines.findIndex((line) => line === label);
+          return index >= 0 && lines[index + 1] ? lines[index + 1] : "";
+        };
+
+        return {
+          buyPrice: getValueAfterLabel("سعر الشراء :"),
+          sellPrice: getValueAfterLabel("سعر البيع :"),
+          quantity: getValueAfterLabel("الكمية :"),
+        };
+      }
+
+      async function loadData() {
+        try {
+          setStatus("جارٍ تحميل البيانات...");
+          const response = await fetch("./data.txt", { cache: "no-store" });
+
+          if (!response.ok) {
+            throw new Error("تعذر قراءة ملف البيانات.");
+          }
+
+          const text = await response.text();
+          const data = parseData(text);
+
+          buyPrice.textContent = data.buyPrice;
+          sellPrice.textContent = data.sellPrice;
+          quantity.textContent = data.quantity;
+          setStatus("تم تحميل البيانات بنجاح.");
+        } catch (error) {
+          buyPrice.textContent = "";
+          sellPrice.textContent = "";
+          quantity.textContent = "";
+          setStatus(error.message, true);
+        }
+      }
+
+      loadData();
+    </script>
+  </body>
+</html>
